@@ -49,17 +49,36 @@ python train.py                  # entrena (500 partides); desa model/snake_dqn.
 python play.py                   # mira-la jugar en una finestra (pygame)
 python play.py --text            # o al terminal
 python play.py --games 50 --fast # avalua: mitjana i màxim de 50 partides
+python play.py --segur           # amb el guardià: guanya TOTES les partides
 python test_game.py              # proves del joc
 ```
 
 Ja hi ha un model entrenat a `model/snake_dqn.pt`, així que pots executar `play.py` directament.
 
+## Mode guanyador: el guardià (`--segur`)
+
+Una xarxa neuronal sola no pot garantir que guanyi sempre: s'equivoca de tant en tant, i amb una serp
+llarga un sol error és mortal. Per això hi ha un **guardià** (`guardian.py`) basat en un
+**cicle hamiltonià**: un camí que passa per totes les caselles del tauler i torna a l'inici.
+Seguint aquest camí la serp no pot xocar mai.
+
+La IA continua decidint, però el guardià només accepta les seves jugades si són **dreceres segures**:
+
+1. no avancen tant pel cicle que passin per davant de la cua, i
+2. no salten per sobre del menjar (així sempre hi acaba arribant).
+
+Si cap jugada de la IA és segura, la serp segueix el cicle. Amb aquestes regles està demostrat
+que la serp **omple tot el tauler (397 punts) a totes les partides**. Les proves (`test_game.py`)
+ho comproven fins i tot amb una "IA" que tria a l'atzar.
+
 ## Límits i idees per millorar
 
-Ara ja no s'enrotlla tan fàcilment, però quan és molt llarga (més de ~100 caselles) encara queda atrapada,
-perquè no planifica diversos moviments endavant. Possibles millores:
+Sense el guardià, quan és molt llarga (més de ~100 caselles) encara queda atrapada, perquè no planifica
+diversos moviments endavant. Amb el guardià guanya sempre, però triga unes 35.000 jugades a omplir el tauler.
+Possibles millores:
 
 1. Que vegi **tot el tauler** com una imatge i fer servir una xarxa convolucional (CNN).
 2. Entrenar-la més partides o en taulers més petits primer (*curriculum learning*).
 3. Provar altres algorismes: PPO, A2C (per exemple amb `stable-baselines3`).
 4. Combinar la xarxa amb una cerca de pocs moviments endavant, com fa AlphaZero.
+5. Entrenar la IA *amb* el guardià activat, perquè aprengui a triar les dreceres que fan guanyar més ràpid.

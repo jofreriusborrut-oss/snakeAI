@@ -133,6 +133,12 @@ class DQNAgent:
             q = self.model(torch.from_numpy(state).unsqueeze(0))
         return int(q.argmax().item())
 
+    def ranked_actions(self, state: np.ndarray) -> list[int]:
+        """Accions ordenades de la que la IA creu millor a la pitjor."""
+        with torch.no_grad():
+            q = self.model(torch.from_numpy(state).unsqueeze(0))[0]
+        return [int(a) for a in q.argsort(descending=True)]
+
     def remember(self, s, a, r, s2, done):
         self.memory.append((s, a, r, s2, done))
 

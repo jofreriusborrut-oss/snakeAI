@@ -1,6 +1,9 @@
 """Proves del joc i de l'estat. Executa: python -m pytest  (o python test_game.py)"""
 from agent import get_state
+import random
+
 from game import REWARD_DEATH, REWARD_FOOD, SnakeGame
+from guardian import Guardian, hamiltonian_cycle
 
 
 def test_reset():
@@ -69,6 +72,28 @@ def test_state_values_in_range():
         assert ((s >= 0) & (s <= 1)).all()
         if g.step(g.rng.randrange(3)).done:
             g.reset()
+
+
+def test_hamiltonian_cycle():
+    for w, h in [(20, 20), (6, 4), (5, 6), (6, 5)]:
+        c = hamiltonian_cycle(w, h)
+        assert len(c) == len(set(c)) == w * h
+        for a, b in zip(c, c[1:] + c[:1]):  # cada pas és a una casella veïna
+            assert abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1
+
+
+def test_guardian_always_wins():
+    """Fins i tot si la 'IA' tria a l'atzar, el guardià garanteix la victòria."""
+    rng = random.Random(0)
+    for seed in range(30):
+        g = SnakeGame(8, 8, seed=seed)
+        guard = Guardian(g)
+        while True:
+            prefs = [0, 1, 2]
+            rng.shuffle(prefs)
+            if g.step(guard.choose(prefs)).done:
+                break
+        assert g.food is None and g.score == 8 * 8 - 3, f"llavor {seed}: {g.score} punts"
 
 
 if __name__ == "__main__":
