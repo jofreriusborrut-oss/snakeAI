@@ -39,9 +39,36 @@ def test_state():
     hx, hy = g.snake[0]
     g.food = (hx + 2, hy)
     s = get_state(g)
-    assert s.shape == (11,)
+    assert s.shape == (20,)
     assert list(s[3:7]) == [1, 0, 0, 0]  # va cap a la dreta
     assert s[7] == 1 and s[9] == 0  # menjar a la dreta
+
+
+def test_detects_trap():
+    """Si va recte entra a la cantonada (0,0), una bossa tancada pel seu propi cos."""
+    g = SnakeGame(8, 8, seed=0)
+    g.snake = [(1, 0), (2, 0), (2, 1), (1, 1), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]
+    g.dir = 2  # cap a l'esquerra
+    g.food = (7, 7)
+    s = get_state(g)
+    assert s[0] == 0  # recte no és un xoc immediat...
+    assert s[11] < 0.05 and s[14] == 0  # ...però és una trampa: 1 casella i sense camí a la cua
+
+
+def test_open_space():
+    g = SnakeGame(10, 10, seed=0)
+    g.food = (0, 0)
+    s = get_state(g)
+    assert s[11] > 0.9 and s[14] == 1  # recte: gairebé tot el tauler lliure i cua accessible
+
+
+def test_state_values_in_range():
+    g = SnakeGame(10, 10, seed=3)
+    for _ in range(30):
+        s = get_state(g)
+        assert ((s >= 0) & (s <= 1)).all()
+        if g.step(g.rng.randrange(3)).done:
+            g.reset()
 
 
 if __name__ == "__main__":

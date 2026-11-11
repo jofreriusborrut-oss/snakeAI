@@ -1,7 +1,7 @@
 """Entrena la IA del Snake.
 
 Ús:
-    python train.py                 # 300 partides (uns minuts en un portàtil)
+    python train.py                 # 500 partides (uns minuts en un portàtil)
     python train.py --games 1000    # més partides
 """
 import argparse
@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--games", type=int, default=300)
+    p.add_argument("--games", type=int, default=500)
     p.add_argument("--size", type=int, default=20, help="mida del tauler")
     p.add_argument("--out", default=os.path.join(HERE, "model", "snake_dqn.pt"))
     p.add_argument("--seed", type=int, default=None)
@@ -30,29 +30,32 @@ def main():
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     game = SnakeGame(args.size, args.size, seed=args.seed)
     agent = DQNAgent()
-    scores, record, t0 = [], 0, time.time()
+    scores, record, best_avg, steps, t0 = [], 0, -1.0, 0, time.time()
 
     for n in range(1, args.games + 1):
         # L'exploració baixa de 100% a 1% durant la primera meitat
-        agent.epsilon = max(0.01, 1.0 - n / (args.games * 0.5))
+        agent.epsilon = max(0.01, 1.0 - n / (args.games * 0.4))
         game.reset()
         state = get_state(game)
         while True:
             action = agent.act(state)
             res = game.step(action)
             new_state = get_state(game)
-            agent.train_short(state, action, res.reward, new_state, res.done)
             agent.remember(state, action, res.reward, new_state, res.done)
             state = new_state
+            steps += 1
+            if steps % 4 == 0:
+                agent.train_replay()  # repassa experiències (experience replay)
             if res.done:
                 break
 
-        agent.train_long()  # repassa experiències antigues (experience replay)
         scores.append(game.score)
-        if game.score > record:
-            record = game.score
-            agent.save(args.out)
+        record = max(record, game.score)
         avg = sum(scores[-50:]) / len(scores[-50:])
+        # Desa el model quan la MITJANA és la millor (no una partida amb sort)
+        if len(scores) >= 50 and avg > best_avg:
+            best_avg = avg
+            agent.save(args.out)
         if n % 10 == 0 or n == args.games:
             print(f"Partida {n:4d} | punts {game.score:3d} | rècord {record:3d} | "
                   f"mitjana(50) {avg:5.1f} | exploració {agent.epsilon:4.2f} | {time.time() - t0:5.0f}s")
@@ -75,7 +78,9 @@ def main():
     except ImportError:
         pass
 
-    print(f"\nFet. Millor model desat a {args.out} (rècord {record}).")
+    if best_avg < 0:
+        agent.save(args.out)
+    print(f"\nFet. Model desat a {args.out} (millor mitjana {max(best_avg, 0):.1f}, rècord {record}).")
 
 
 if __name__ == "__main__":
